@@ -69,7 +69,9 @@ namespace egret {
                 this.onConnect.call(this.thisObject)
             });
             qq.onSocketClose(() => {
-                this.onClose.call(this.thisObject)
+                egret.callLater(()=>{
+                    this.onClose.call(this.thisObject)
+                },this)
             })
             qq.onSocketError(() => {
                 this.onError.call(this.thisObject)
