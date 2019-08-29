@@ -2684,7 +2684,7 @@ r.prototype = e.prototype, t.prototype = new r();
         /**
          * QQ小游戏支持库版本号
          */
-        qqgame.version = "0.1.3";
+        qqgame.version = "0.1.4";
         /**
          * 运行环境是否为子域
          */
@@ -3132,6 +3132,7 @@ egret.Capabilities["runtimeType" + ""] = "qqgame";
                 return _this;
             }
             WebPlayer.prototype.init = function (container, options) {
+                console.log("Egret Engine Version:", egret.Capabilities.engineVersion);
                 var option = this.readOption(container, options);
                 var stage = new egret.Stage();
                 stage.$screen = this;
