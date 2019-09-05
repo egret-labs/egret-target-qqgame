@@ -32,6 +32,7 @@ namespace egret {
         constructor() {
             this.systemInfo = qq.getSystemInfoSync();
         }
+        private socketTask: qq.socketTask;
         private onConnect: Function;
         private onClose: Function;
         private onSocketData: Function;
@@ -52,49 +53,54 @@ namespace egret {
             this.port = port;
 
             let socketServerUrl = "ws://" + this.host + ":" + this.port;
-            qq.connectSocket({
+            this.socketTask = qq.connectSocket({
                 url: socketServerUrl
             })
             this._bindEvent();
         }
 
         public connectByUrl(url: string): void {
-            qq.connectSocket({
+            this.socketTask = qq.connectSocket({
                 url: url
             })
             this._bindEvent();
         }
         private _bindEvent(): void {
-            qq.onSocketOpen(() => {
+            
+            this.socketTask.onOpen(()=>{
                 this.onConnect.call(this.thisObject)
             });
-            qq.onSocketClose(() => {
-                egret.callLater(()=>{
+
+            this.socketTask.onClose(()=>{
+                egret.callLater(() => {
                     this.onClose.call(this.thisObject)
-                },this)
+                }, this)
             })
-            qq.onSocketError(() => {
+
+            this.socketTask.onError(()=>{
                 this.onError.call(this.thisObject)
             })
-            qq.onSocketMessage((res) => {
+            this.socketTask.onMessage((res)=>{
                 if (typeof res.data === "string") {
                     this.onSocketData.call(this.thisObject, res.data);
                 } else {
-                    if(this.systemInfo.platform == 'devtools'){
+                    if (this.systemInfo.platform == 'devtools') {
                         new Response(res.data).arrayBuffer().then((buffer) => {
                             this.onSocketData.call(this.thisObject, buffer);
                         });
-                    }else{
+                    } else {
                         this.onSocketData.call(this.thisObject, res.data);
                     }
                 }
             })
         }
         public send(message: any): void {
-            qq.sendSocketMessage({ data: message })
+            this.socketTask.send({
+                data: message
+            })
         }
         public close(): void {
-            qq.closeSocket()
+            this.socketTask.close()
         }
         public disconnect(): void {
             this.close()

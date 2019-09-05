@@ -3644,31 +3644,31 @@ egret.DeviceOrientation = egret.qqgame.WebDeviceOrientation;
             this.host = host;
             this.port = port;
             var socketServerUrl = "ws://" + this.host + ":" + this.port;
-            qq.connectSocket({
+            this.socketTask = qq.connectSocket({
                 url: socketServerUrl
             });
             this._bindEvent();
         };
         QQSocket.prototype.connectByUrl = function (url) {
-            qq.connectSocket({
+            this.socketTask = qq.connectSocket({
                 url: url
             });
             this._bindEvent();
         };
         QQSocket.prototype._bindEvent = function () {
             var _this = this;
-            qq.onSocketOpen(function () {
+            this.socketTask.onOpen(function () {
                 _this.onConnect.call(_this.thisObject);
             });
-            qq.onSocketClose(function () {
+            this.socketTask.onClose(function () {
                 egret.callLater(function () {
                     _this.onClose.call(_this.thisObject);
                 }, _this);
             });
-            qq.onSocketError(function () {
+            this.socketTask.onError(function () {
                 _this.onError.call(_this.thisObject);
             });
-            qq.onSocketMessage(function (res) {
+            this.socketTask.onMessage(function (res) {
                 if (typeof res.data === "string") {
                     _this.onSocketData.call(_this.thisObject, res.data);
                 }
@@ -3685,10 +3685,12 @@ egret.DeviceOrientation = egret.qqgame.WebDeviceOrientation;
             });
         };
         QQSocket.prototype.send = function (message) {
-            qq.sendSocketMessage({ data: message });
+            this.socketTask.send({
+                data: message
+            });
         };
         QQSocket.prototype.close = function () {
-            qq.closeSocket();
+            this.socketTask.close();
         };
         QQSocket.prototype.disconnect = function () {
             this.close();

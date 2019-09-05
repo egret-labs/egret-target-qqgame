@@ -31,7 +31,7 @@ declare namespace qq {
     function onTouchCancel(event: Function): void;
 
     /**socket */
-    function connectSocket(data: { url: string, success?: Function, fail?: Function }): void;
+    function connectSocket(data: { url: string, success?: Function, fail?: Function }): socketTask;
     function closeSocket();
     function onSocketOpen(callback: Function);
     function onSocketClose(callback: Function);
@@ -49,7 +49,15 @@ declare namespace qq {
     function stopDeviceMotionListening();
     function onDeviceMotionChange(callback: Function);
 
-
+    interface socketTask{
+        send(data:any)
+        close(data?:any)
+        onOpen(callback:Function)
+        onClose(callback:Function)
+        onError(callback:Function)
+        onMessage(callback:Function)
+    }
+    
     interface IENV {
         USER_DATA_PATH: string;
     }
