@@ -115,7 +115,7 @@ namespace egret.qqgame {
             }
             option.fpsStyles = styles;
 
-            option.showLog = false;
+            option.showLog = options.showLog;
             option.logFilter = "";
 
             return option;
