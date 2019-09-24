@@ -1,6 +1,6 @@
 {
 	"projectType": "qqgame",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"args": [
 		{
 			"name": "appid",

@@ -2684,7 +2684,7 @@ r.prototype = e.prototype, t.prototype = new r();
         /**
          * QQ小游戏支持库版本号
          */
-        qqgame.version = "0.1.4";
+        qqgame.version = "0.1.5";
         /**
          * 运行环境是否为子域
          */
