@@ -74,7 +74,7 @@ namespace egret.qqgame {
         /**
          * @private
          */
-        private originAudio:HTMLAudioElement;
+        private originAudio:qq.InnerAudioContext;
         /**
          * @private
          */
@@ -109,34 +109,27 @@ namespace egret.qqgame {
             if (DEBUG && !url) {
                 egret.$error(3002);
             }
-            let audio = new Audio(url);
-            audio.addEventListener("canplaythrough", onAudioLoaded);
-            audio.addEventListener("error", onAudioError);
-
-           // audio.load();     wxgame没有此接口
+            let audio:qq.InnerAudioContext = qq.createInnerAudioContext()
+            audio.onCanplay(onAudioLoaded);
+            audio.onError(onAudioError)
+            audio.src = url;
             this.originAudio = audio;
-            if(HtmlSound.clearAudios[this.url]) {
-                delete HtmlSound.clearAudios[this.url];
-            }
-            HtmlSound.$recycle(this.url, audio);
+            
 
             function onAudioLoaded():void {
                 removeListeners();
-
                 self.loaded = true;
                 self.dispatchEventWith(egret.Event.COMPLETE);
-                
             }
 
             function onAudioError():void {
                 removeListeners();
-
                 self.dispatchEventWith(egret.IOErrorEvent.IO_ERROR);
             }
 
             function removeListeners():void {
-                audio.removeEventListener("canplaythrough", onAudioLoaded);
-                audio.removeEventListener("error", onAudioError);
+                audio.offCanplay(onAudioLoaded);
+                audio.offError(onAudioError)
             }
         }
 
@@ -151,22 +144,11 @@ namespace egret.qqgame {
                 egret.$error(1049);
             }
 
-            let audio = HtmlSound.$pop(this.url);
-            if (audio == null) {
-                audio = <HTMLAudioElement>this.originAudio.cloneNode();
-            }
-            else {
-                //audio.load();
-            }
-            // audio.autoplay = true;
-
-            let channel = new HtmlSoundChannel(audio);
+            let channel = new HtmlSoundChannel(this.originAudio);
             channel.$url = this.url;
             channel.$loops = loops;
             channel.$startTime = startTime;
             channel.$play();
-
-            sys.$pushSoundChannel(channel);
 
             return channel;
         }
@@ -175,45 +157,11 @@ namespace egret.qqgame {
          * @inheritDoc
          */
         public close() {
-            if (this.loaded && this.originAudio)
-                this.originAudio.src = "";
-            if (this.originAudio)
+            if (this.originAudio) {
+                this.originAudio.destroy()
                 this.originAudio = null;
-            HtmlSound.$clear(this.url);
+            }
             this.loaded = false;
-        }
-
-        /**
-         * @private
-         */
-        private static audios:Object = {};
-        private static clearAudios:Object = {};
-
-        static $clear(url:string):void {
-            HtmlSound.clearAudios[url] = true;
-            let array:HTMLAudioElement[] = HtmlSound.audios[url];
-            if (array) {
-                array.length = 0;
-            }
-        }
-
-        static $pop(url:string):HTMLAudioElement {
-            let array:HTMLAudioElement[] = HtmlSound.audios[url];
-            if (array && array.length > 0) {
-                return array.pop();
-            }
-            return null;
-        }
-
-        static $recycle(url:string, audio:HTMLAudioElement):void {
-            if(HtmlSound.clearAudios[url]) {
-                return;
-            }
-            let array:HTMLAudioElement[] = HtmlSound.audios[url];
-            if (HtmlSound.audios[url] == null) {
-                array = HtmlSound.audios[url] = [];
-            }
-            array.push(audio);
         }
     }
 }

@@ -51,18 +51,36 @@ namespace egret.qqgame {
         /**
          * @private
          */
-        private audio: HTMLAudioElement = null;
+        private audio: qq.InnerAudioContext = null;
 
         //声音是否已经播放完成
         private isStopped: boolean = false;
+        private isEventdAdded: boolean = false;
 
         /**
          * @private
          */
-        constructor(audio: HTMLAudioElement) {
+        constructor(audio: qq.InnerAudioContext) {
             super();
-            audio.addEventListener("ended", this.onPlayEnd);
             this.audio = audio;
+        }
+        /**
+         * @private
+         */
+        private addEvent() {
+            if (!this.isEventdAdded) {
+                this.isEventdAdded = true;
+                this.audio.onEnded(this.onPlayEnd)
+            }
+        }
+        /**
+         * @private
+         */
+        private removeEvent() {
+            if (this.isEventdAdded) {
+                this.isEventdAdded = false;
+                this.audio.offEnded(this.onPlayEnd)
+            }
         }
 
         $play(): void {
@@ -70,9 +88,11 @@ namespace egret.qqgame {
                 egret.$error(1036);
                 return;
             }
-            this.audio.play();
-            this.audio.volume = this._volume;
-            this.audio.currentTime = this.$startTime;
+            this.addEvent();
+            let audio = this.audio;
+            audio.volume = this._volume;
+            audio.seek(this.$startTime);
+            audio.play();
         }
 
         /**
@@ -81,7 +101,6 @@ namespace egret.qqgame {
         private onPlayEnd = () => {
             if (this.$loops == 1) {
                 this.stop();
-
                 this.dispatchEventWith(egret.Event.SOUND_COMPLETE);
                 return;
             }
@@ -90,8 +109,7 @@ namespace egret.qqgame {
                 this.$loops--;
             }
 
-            /////////////
-            //this.audio.load();
+            this.audio.stop();
             this.$play();
         };
 
@@ -103,19 +121,15 @@ namespace egret.qqgame {
             if (!this.audio)
                 return;
 
-            if (!this.isStopped) {
-                sys.$popSoundChannel(this);
-            }
             this.isStopped = true;
 
             let audio = this.audio;
-            audio.removeEventListener("ended", this.onPlayEnd);
-            audio.pause();
-            audio.volume = 0;
-            HtmlSound.$recycle(this.$url, audio);
-            
-            this._volume = 0;
-            this.audio = null;
+
+            audio.stop()
+            this.removeEvent();
+
+            this.audio = null
+            audio = null;
         }
 
         /**
