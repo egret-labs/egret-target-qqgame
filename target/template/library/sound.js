@@ -79,7 +79,7 @@ function download(url, target) {
     return new Promise((resolve, reject) => {
         const dirname = path.dirname(target);
         fs.mkdirsSync(dirname);
-        const file_target = path.geQQUserPath(target);
+        const file_target = path.getQQUserPath(target);
         qq.downloadFile({
             url: url,
             filePath: file_target,
