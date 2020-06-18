@@ -1390,7 +1390,7 @@ r.prototype = e.prototype, t.prototype = new r();
 (function (egret) {
     var qqgame;
     (function (qqgame) {
-        qqgame.version = "0.1.7";
+        qqgame.version = "0.3.0";
         qqgame.isSubContext = false;
         qqgame.preUploadTexture = false;
     })(qqgame = egret.qqgame || (egret.qqgame = {}));
@@ -1412,6 +1412,20 @@ r.prototype = e.prototype, t.prototype = new r();
             isRunning = true;
             if (!options) {
                 options = {};
+            }
+            if (options.pro) {
+                egret.pro.egret2dDriveMode = true;
+                try {
+                    if (window['startup']) {
+                        window['startup']();
+                    }
+                    else {
+                        console.error("EgretPro.js don't has function:window.startup");
+                    }
+                }
+                catch (e) {
+                    console.error(e);
+                }
             }
             qqgame.Html5Capatibility.$init();
             if (options.renderMode == "webgl") {
@@ -2919,7 +2933,7 @@ if (window['HTMLVideoElement'] == undefined) {
     (function (qqgame) {
         var debugLogCompressedTextureNotSupported = {};
         var WebGLRenderContext = (function () {
-            function WebGLRenderContext(width, height) {
+            function WebGLRenderContext(width, height, context) {
                 this._defaultEmptyTexture = null;
                 this.glID = null;
                 this.projectionX = NaN;
@@ -2928,11 +2942,25 @@ if (window['HTMLVideoElement'] == undefined) {
                 this._supportedCompressedTextureInfo = [];
                 this.$scissorState = false;
                 this.vertSize = 5;
+                this.$beforeRender = function () {
+                    var gl = this.context;
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+                    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+                    gl.disable(gl.DEPTH_TEST);
+                    gl.disable(gl.CULL_FACE);
+                    gl.enable(gl.BLEND);
+                    gl.disable(gl.STENCIL_TEST);
+                    gl.colorMask(true, true, true, true);
+                    this.setBlendMode("source-over");
+                    gl.activeTexture(gl.TEXTURE0);
+                    this.currentProgram = null;
+                };
                 this.surface = egret.sys.mainCanvas(width, height);
                 if (egret.nativeRender) {
                     return;
                 }
-                this.initWebGL();
+                this.initWebGL(context);
+                this.getSupportedCompressedTexture();
                 this.$bufferStack = [];
                 var gl = this.context;
                 this.vertexBuffer = gl.createBuffer();
@@ -2943,11 +2971,11 @@ if (window['HTMLVideoElement'] == undefined) {
                 this.vao = new qqgame.WebGLVertexArrayObject();
                 this.setGlobalCompositeOperation("source-over");
             }
-            WebGLRenderContext.getInstance = function (width, height) {
+            WebGLRenderContext.getInstance = function (width, height, context) {
                 if (this.instance) {
                     return this.instance;
                 }
-                this.instance = new WebGLRenderContext(width, height);
+                this.instance = new WebGLRenderContext(width, height, context);
                 return this.instance;
             };
             WebGLRenderContext.prototype.pushBuffer = function (buffer) {
@@ -3032,13 +3060,16 @@ if (window['HTMLVideoElement'] == undefined) {
                 }
                 return returnValue;
             };
-            WebGLRenderContext.prototype.initWebGL = function () {
+            WebGLRenderContext.prototype.initWebGL = function (context) {
                 this.onResize();
                 this.surface.addEventListener("webglcontextlost", this.handleContextLost.bind(this), false);
                 this.surface.addEventListener("webglcontextrestored", this.handleContextRestored.bind(this), false);
-                this.getWebGLContext();
+                context ? this.setContext(context) : this.getWebGLContext();
                 var gl = this.context;
                 this.$maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+            };
+            WebGLRenderContext.prototype.getSupportedCompressedTexture = function () {
+                var gl = this.context ? this.context : egret.sys.getContextWebGL(this.surface);
                 this.pvrtc = gl.getExtension('WEBGL_compressed_texture_pvrtc') || gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc');
                 if (this.pvrtc) {
                     this.pvrtc.name = 'WEBGL_compressed_texture_pvrtc';
@@ -3047,9 +3078,16 @@ if (window['HTMLVideoElement'] == undefined) {
                 if (this.etc1) {
                     this.etc1.name = 'WEBGL_compressed_texture_etc1';
                 }
-                egret.Capabilities.supportedCompressedTexture = egret.Capabilities.supportedCompressedTexture || {};
-                egret.Capabilities.supportedCompressedTexture.pvrtc = !!this.pvrtc;
-                egret.Capabilities.supportedCompressedTexture.etc1 = !!this.etc1;
+                if (egret.Capabilities._supportedCompressedTexture) {
+                    egret.Capabilities._supportedCompressedTexture = egret.Capabilities._supportedCompressedTexture || {};
+                    egret.Capabilities._supportedCompressedTexture.pvrtc = !!this.pvrtc;
+                    egret.Capabilities._supportedCompressedTexture.etc1 = !!this.etc1;
+                }
+                else {
+                    egret.Capabilities['supportedCompressedTexture'] = egret.Capabilities._supportedCompressedTexture || {};
+                    egret.Capabilities['supportedCompressedTexture'].pvrtc = !!this.pvrtc;
+                    egret.Capabilities['supportedCompressedTexture'].etc1 = !!this.etc1;
+                }
                 this._supportedCompressedTextureInfo = this._buildSupportedCompressedTextureInfo([this.etc1, this.pvrtc]);
             };
             WebGLRenderContext.prototype.handleContextLost = function () {
@@ -3062,6 +3100,7 @@ if (window['HTMLVideoElement'] == undefined) {
             WebGLRenderContext.prototype.getWebGLContext = function () {
                 var gl = egret.sys.getContextWebGL(this.surface);
                 this.setContext(gl);
+                return gl;
             };
             WebGLRenderContext.prototype.setContext = function (gl) {
                 this.context = gl;
@@ -3556,6 +3595,9 @@ if (window['HTMLVideoElement'] == undefined) {
                     else {
                         var value = filter.$uniforms[key];
                         if (value !== undefined) {
+                            if (filter instanceof egret.GlowFilter && (key == "blurX" || key == "blurY" || key == "dist")) {
+                                value = value * filter.$filterScale;
+                            }
                             uniforms[key].setValue(value);
                         }
                         else {
@@ -3633,7 +3675,8 @@ if (window['HTMLVideoElement'] == undefined) {
                         var width = input.rootRenderTarget.width;
                         var height = input.rootRenderTarget.height;
                         output = qqgame.WebGLRenderBuffer.create(width, height);
-                        output.setTransform(1, 0, 0, 1, 0, 0);
+                        var scale = Math.max(egret.sys.DisplayList.$canvasScaleFactor, 2);
+                        output.setTransform(scale, 0, 0, scale, 0, 0);
                         output.globalAlpha = 1;
                         this.drawToRenderTarget(filter_1, input, output);
                         if (input != originInput) {
@@ -3676,6 +3719,8 @@ if (window['HTMLVideoElement'] == undefined) {
                     }
                 }
                 output.saveTransform();
+                var scale = Math.max(egret.sys.DisplayList.$canvasScaleFactor, 2);
+                output.transform(1 / scale, 0, 0, 1 / scale, 0, 0);
                 output.transform(1, 0, 0, -1, 0, height);
                 output.currentTexture = input.rootRenderTarget.texture;
                 this.vao.cacheArrays(output, 0, 0, width, height, 0, 0, width, height, width, height);
@@ -3701,6 +3746,7 @@ if (window['HTMLVideoElement'] == undefined) {
         qqgame.WebGLRenderContext = WebGLRenderContext;
         __reflect(WebGLRenderContext.prototype, "egret.qqgame.WebGLRenderContext", ["egret.sys.RenderContext"]);
         WebGLRenderContext.initBlendMode();
+        egret.sys.WebGLRenderContext = WebGLRenderContext;
     })(qqgame = egret.qqgame || (egret.qqgame = {}));
 })(egret || (egret = {}));
 
@@ -4219,7 +4265,15 @@ if (window['HTMLVideoElement'] == undefined) {
                         return drawCalls;
                     }
                 }
-                var displayBuffer = this.createRenderBuffer(displayBoundsWidth, displayBoundsHeight);
+                var scale = Math.max(egret.sys.DisplayList.$canvasScaleFactor, 2);
+                filters.forEach(function (filter) {
+                    if (filter instanceof egret.GlowFilter) {
+                        filter.$filterScale = scale;
+                    }
+                });
+                var displayBuffer = this.createRenderBuffer(scale * displayBoundsWidth, scale * displayBoundsHeight);
+                displayBuffer.saveTransform();
+                displayBuffer.transform(scale, 0, 0, scale, 0, 0);
                 displayBuffer.context.pushBuffer(displayBuffer);
                 if (displayObject.$mask) {
                     drawCalls += this.drawWithClip(displayObject, displayBuffer, -displayBoundsX, -displayBoundsY);
@@ -4231,6 +4285,7 @@ if (window['HTMLVideoElement'] == undefined) {
                     drawCalls += this.drawDisplayObject(displayObject, displayBuffer, -displayBoundsX, -displayBoundsY);
                 }
                 displayBuffer.context.popBuffer();
+                displayBuffer.restoreTransform();
                 if (drawCalls > 0) {
                     if (hasBlendMode) {
                         buffer.context.setGlobalCompositeOperation(compositeOp);
@@ -5009,12 +5064,19 @@ if (window['HTMLVideoElement'] == undefined) {
                 var buffer = renderBufferPool.pop();
                 if (buffer) {
                     buffer.resize(width, height);
+                    buffer.setTransform(1, 0, 0, 1, 0, 0);
                 }
                 else {
                     buffer = new qqgame.WebGLRenderBuffer(width, height);
                     buffer.$computeDrawCall = false;
                 }
                 return buffer;
+            };
+            WebGLRenderer.prototype.renderClear = function () {
+                var renderContext = qqgame.WebGLRenderContext.getInstance();
+                var gl = renderContext.context;
+                renderContext.$beforeRender();
+                gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
             };
             return WebGLRenderer;
         }());
